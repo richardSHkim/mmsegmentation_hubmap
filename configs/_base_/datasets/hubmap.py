@@ -2,7 +2,7 @@
 dataset_type = 'HuBMAPDataset'
 data_root = 'data/hubmap'
 img_norm_cfg = dict(
-    mean=[196.89, 190.19, 194.80], std=[63.10, 66.76, 65.75], to_rgb=True)
+    mean=[196.869, 190.186, 194.802], std=[63.010, 66.765, 65.745], to_rgb=True)
 crop_size = (512, 512)
 train_pipeline = [
     dict(type='LoadImageFromFile'),

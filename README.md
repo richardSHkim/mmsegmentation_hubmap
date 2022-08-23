@@ -14,11 +14,16 @@ docker build -t mmsegmentation .
 
 Repalce [DIR_TO_DATA] and [DIR_TO_REPO].
 
-```shell script
+```shell
 GPUID=$1
 CONFIG=$2
 
-docker run -it --gpus all --ipc=host -v [DIR_TO_DATA]:/data/ -v [DIR_TO_REPO]:/workspace/mmsegmentation/ --rm mmsegmentation:latest /bin/bash -c "cd /workspace/mmsegmentation; pip install -v -e .; CUDA_VISIBLE_DEVICES=${GPUID} python tools/train.py ${CONFIG}"
+docker run -it --gpus all --ipc=host \
+  -v [DIR_TO_DATA]:/data/ \
+  -v [DIR_TO_REPO]:/workspace/mmsegmentation/ \
+  --rm mmsegmentation:latest \
+  /bin/bash -c \
+  "cd /workspace/mmsegmentation; pip install -v -e .; CUDA_VISIBLE_DEVICES=${GPUID} python tools/train.py ${CONFIG}"
 ```
 
 * train

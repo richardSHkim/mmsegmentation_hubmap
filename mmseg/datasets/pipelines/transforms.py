@@ -5,6 +5,7 @@ import mmcv
 import numpy as np
 from mmcv.utils import deprecated_api_warning, is_tuple_of
 from numpy import random
+import cv2
 
 from ..builder import PIPELINES
 
@@ -1333,3 +1334,144 @@ class RandomMosaic(object):
         repr_str += f'pad_val={self.pad_val}, '
         repr_str += f'seg_pad_val={self.pad_val})'
         return repr_str
+
+
+@PIPELINES.register_module()
+class HuBMAPAug(object):
+    def __init__(self):
+        pass
+
+    def __call__(self, results):
+        image = results['img']
+        results['img'] = image.astype(np.float32)/255
+
+        results = self.do_random_flip(results)
+        results = self.do_random_rot90(results)
+
+        for fn in np.random.choice([
+            lambda results: (results),
+            lambda results: self.do_random_noise(results, mag=0.1),
+            lambda results: self.do_random_contast(results, mag=0.40),
+            lambda results: self.do_random_hsv(results, mag=[0.40, 0.40, 0])
+        ], 2): results = fn(results)
+
+        for fn in np.random.choice([
+            lambda results: (results),
+            lambda results: self.do_random_rotate_scale(results, angle=45, scale=[0.50, 2.0]),
+        ], 1): results = fn(results)
+
+        image = results['img']
+        results['img'] = (image*255).astype(np.uint8)
+
+        return results
+    
+    def do_random_flip(self, results):
+        if 'flip' not in results:
+            results['flip'] = 'dummy'
+        if 'flip_direction' not in results:
+            results['flip_direction'] = 'dummy'
+
+        if np.random.rand()>0.5:
+            image = results['img']
+            results['img'] = cv2.flip(image,0)
+            for key in results.get('seg_fields', []):
+                gt_seg = results[key]
+                gt_seg = cv2.flip(gt_seg,0)
+                results[key] = gt_seg
+        if np.random.rand()>0.5:
+            image = results['img']
+            results['img'] = cv2.flip(image,1)
+            for key in results.get('seg_fields', []):
+                gt_seg = results[key]
+                gt_seg = cv2.flip(gt_seg,1)
+                results[key] = gt_seg
+        if np.random.rand()>0.5:
+            image = results['img']
+            results['img'] = image.transpose(1,0,2)
+            for key in results.get('seg_fields', []):
+                gt_seg = results[key]
+                gt_seg = gt_seg.transpose(1,0)
+                results[key] = gt_seg
+        
+        image = results['img']
+        results['img'] = np.ascontiguousarray(image)
+        for key in results.get('seg_fields', []):
+            gt_seg = results[key]
+            gt_seg = np.ascontiguousarray(gt_seg)
+            results[key] = gt_seg
+        return results
+
+    def do_random_rot90(self, results):
+        r = np.random.choice([
+            0,
+            cv2.ROTATE_90_CLOCKWISE,
+            cv2.ROTATE_90_COUNTERCLOCKWISE,
+            cv2.ROTATE_180,
+        ])
+        if r==0:
+            return results
+        else:
+            image = results['img']
+            results['img'] = cv2.rotate(image, r)
+            for key in results.get('seg_fields', []):
+                gt_seg = results[key]
+                gt_seg = cv2.rotate(gt_seg, r)
+                results[key] = gt_seg
+            return results
+        
+    def do_random_contast(self, results, mag=0.3):
+        image = results['img']
+
+        alpha = 1 + random.uniform(-1,1)*mag
+        image = image * alpha
+        results['img'] = np.clip(image,0,1)
+        return results
+
+    def do_random_hsv(self, results, mag=[0.15,0.25,0.25]):
+        image = results['img']
+        image = (image*255).astype(np.uint8)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+        h = hsv[:, :, 0].astype(np.float32)  # hue
+        s = hsv[:, :, 1].astype(np.float32)  # saturation
+        v = hsv[:, :, 2].astype(np.float32)  # value
+        h = (h*(1 + random.uniform(-1,1)*mag[0]))%180
+        s =  s*(1 + random.uniform(-1,1)*mag[1])
+        v =  v*(1 + random.uniform(-1,1)*mag[2])
+
+        hsv[:, :, 0] = np.clip(h,0,180).astype(np.uint8)
+        hsv[:, :, 1] = np.clip(s,0,255).astype(np.uint8)
+        hsv[:, :, 2] = np.clip(v,0,255).astype(np.uint8)
+        image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        image = image.astype(np.float32)/255
+        results['img'] = image
+        return results
+
+    def do_random_noise(self, results, mag=0.1):
+        image = results['img']
+        height, width = image.shape[:2]
+        noise = np.random.uniform(-1,1, (height, width,1))*mag
+        image = image + noise
+        image = np.clip(image,0,1)
+        results['img'] = image
+        return results
+
+    def do_random_rotate_scale(self, results, angle=30, scale=[0.8,1.2] ):
+        image = results['img']
+        
+        angle = np.random.uniform(-angle, angle)
+        scale = np.random.uniform(*scale) if scale is not None else 1
+        
+        height, width = image.shape[:2]
+        center = (height // 2, width // 2)
+        
+        transform = cv2.getRotationMatrix2D(center, angle, scale)
+
+        results['img'] = cv2.warpAffine( image, transform, (width, height), flags=cv2.INTER_LINEAR,
+                        borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0))
+        for key in results.get('seg_fields', []):
+            gt_seg = results[key]
+            gt_seg  = cv2.warpAffine( gt_seg, transform, (width, height), flags=cv2.INTER_LINEAR,
+                                    borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+            results[key] = gt_seg
+        return results

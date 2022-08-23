@@ -688,3 +688,56 @@ def test_mosaic():
     mosaic_module = build_from_cfg(transform, PIPELINES)
     results = mosaic_module(results)
     assert results['img'].shape[:2] == (20, 24)
+
+
+def test_hubmapaug(visualize=False):
+    if visualize:
+        import matplotlib.pyplot as plt
+        import cv2
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+    seg = np.array(
+        Image.open(osp.join(osp.dirname(__file__), '../data/seg.png')))
+
+    results['img'] = img
+    results['gt_semantic_seg'] = seg
+    results['seg_fields'] = ['gt_semantic_seg']
+    results['ori_shape_img'] = img.shape
+    results['ori_shape_seg'] = seg.shape
+
+    if visualize:
+        img = cv2.cvtColor(results['img'], cv2.COLOR_BGR2RGB)
+        mask = results['gt_semantic_seg']
+        plt.figure(figsize=(12, 7))
+        plt.subplot(1, 3, 1); plt.imshow(img); plt.axis('OFF'); plt.title('image')
+        plt.subplot(1, 3, 2); plt.imshow(mask*255); plt.axis('OFF'); plt.title('mask')
+        plt.subplot(1, 3, 3); plt.imshow(img); plt.imshow(mask*255, alpha=0.4); plt.axis('OFF'); plt.title('overlay')
+        plt.tight_layout()
+        plt.show()
+
+    resize_transform = dict(type='Resize', img_scale=(768, 768), multiscale_mode='value', keep_ratio=False)
+    resize_transform = build_from_cfg(resize_transform, PIPELINES)
+    hubmapaug_transform = dict(type='HuBMAPAug')
+    hubmapaug_transform = build_from_cfg(hubmapaug_transform, PIPELINES)
+
+    assert 'HuBMAPAug' in repr(hubmapaug_transform)
+
+    results = hubmapaug_transform(resize_transform(results))
+
+    assert results['img'].shape == (768, 768, 3), results['img'].shape
+    assert results['gt_semantic_seg'].shape == (768, 768), results['gt_semantic_seg'].shape
+    assert np.min(results['img']) >= 0, np.min(results['img'])
+    assert np.max(results['img']) > 1 and np.max(results['img']) <= 255 , np.max(results['img'])
+    assert np.all(np.unique(results['gt_semantic_seg']) == np.array([0, 1])), np.unique(results['gt_semantic_seg'])
+
+    if visualize:
+        img = cv2.cvtColor(results['img'], cv2.COLOR_BGR2RGB)
+        mask = results['gt_semantic_seg']
+        plt.figure(figsize=(12, 7))
+        plt.subplot(1, 3, 1); plt.imshow(img); plt.axis('OFF'); plt.title('image')
+        plt.subplot(1, 3, 2); plt.imshow(mask*255); plt.axis('OFF'); plt.title('mask')
+        plt.subplot(1, 3, 3); plt.imshow(img); plt.imshow(mask*255, alpha=0.4); plt.axis('OFF'); plt.title('overlay')
+        plt.tight_layout()
+        plt.show()

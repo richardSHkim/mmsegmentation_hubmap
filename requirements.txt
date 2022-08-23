@@ -3,3 +3,4 @@
 -r requirements/tests.txt
 
 rasterio
+mlflow

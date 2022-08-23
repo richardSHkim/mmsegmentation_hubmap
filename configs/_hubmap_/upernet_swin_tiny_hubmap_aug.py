@@ -45,17 +45,22 @@ evaluation = dict(interval=4000, metric='mDice', pre_eval=True)
 
 batch_size = 8
 
+run_name = 'upernet_swin_aug'
+work_dirs = f'work_dirs/{run_name}'
+
 log_config = dict(
     interval=50,
     hooks=[
         dict(type='MlflowLoggerHook', 
             by_epoch=False, 
             exp_name='upernet_swin_hubmap',
-            tags=dict(lr_config='poly with warmup', 
-                        image_size=(768, 768), 
-                        agumentation='HuBMAPAug',
-                        classes='single-class', 
-                        batch_size=batch_size)
+            tags=dict({'mlflow.runName': run_name,
+                        'lr_config': 'poly with warmup 40k', 
+                        'image_size': (768, 768), 
+                        'agumentation': 'default',
+                        'classes': 'single-class', 
+                        'batch_size': batch_size,
+                      })
         ),
         dict(type='TextLoggerHook', by_epoch=False),
         # dict(type='TensorboardLoggerHook')

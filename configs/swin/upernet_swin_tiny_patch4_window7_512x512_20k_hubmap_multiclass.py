@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/upernet_swin.py', '../_base_/datasets/hubmap.py',
+    '../_base_/models/upernet_swin.py', '../_base_/datasets/hubmap_multiclass.py',
     '../_base_/default_runtime.py', '../_base_/schedules/schedule_20k.py'
 ]
 evaluation = dict(interval=2000, metric='mDice', pre_eval=True)
@@ -14,8 +14,8 @@ model = dict(
         use_abs_pos_embed=False,
         drop_path_rate=0.3,
         patch_norm=True),
-    decode_head=dict(in_channels=[96, 192, 384, 768], num_classes=2),
-    auxiliary_head=dict(in_channels=384, num_classes=2))
+    decode_head=dict(in_channels=[96, 192, 384, 768], num_classes=6),
+    auxiliary_head=dict(in_channels=384, num_classes=6))
 
 # AdamW optimizer, no weight decay for position embedding & layer norm
 # in backbone

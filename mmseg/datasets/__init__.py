@@ -20,6 +20,7 @@ from .stare import STAREDataset
 from .voc import PascalVOCDataset
 from .hubmap import HuBMAPDataset
 from .hubmap_tile import HuBMAPTileDataset
+from .hubmap_multiclass import HuBMAPMultiClassDataset
 
 __all__ = [
     'CustomDataset', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
@@ -29,5 +30,5 @@ __all__ = [
     'STAREDataset', 'DarkZurichDataset', 'NightDrivingDataset',
     'COCOStuffDataset', 'LoveDADataset', 'MultiImageMixDataset',
     'iSAIDDataset', 'ISPRSDataset', 'PotsdamDataset',
-    'HuBMAPDataset', 'HuBMAPTileDataset'
+    'HuBMAPDataset', 'HuBMAPTileDataset', 'HuBMAPMultiClassDataset'
 ]
